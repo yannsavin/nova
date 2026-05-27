@@ -1,0 +1,80 @@
+import React, { useContext } from 'react';
+import { BrowserRouter as Router, Routes, Route, Link, useNavigate } from 'react-router-dom';
+import { AuthProvider, AuthContext } from './context/AuthContext';
+import { FavoritesProvider } from './context/FavoritesContext';
+import HomePage from './pages/HomePage';
+import CatalogPage from './pages/CatalogPage';
+import ProfilePage from './pages/ProfilePage';
+import ProductDetailPage from './pages/ProductDetailPage';
+import AdminPage from './pages/AdminPage';
+import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
+import CheckoutPage from './pages/CheckoutPage';
+import './styles/App.css';
+
+const AppNav = () => {
+  const { user, isAuthenticated, logout } = useContext(AuthContext);
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await logout();
+    navigate('/');
+  };
+
+  return (
+    <header className="app-header">
+      <div className="header-content">
+        <Link to="/" className="app-logo">MERCATO NOVA</Link>
+        <nav>
+          <Link to="/">Accueil</Link>
+          <Link to="/catalogue">Catalogue</Link>
+          {isAuthenticated ? (
+            <>
+              <Link to={`/profile/${user.id}`} className="nav-profile-link">
+                {user.prenom} {user.nom}
+              </Link>
+              <button onClick={handleLogout} className="nav-logout-btn">Déconnexion</button>
+            </>
+          ) : (
+            <>
+              <Link to="/login">Connexion</Link>
+              <Link to="/register" className="nav-register-btn">S'inscrire</Link>
+            </>
+          )}
+          <Link to="/admin" className="nav-admin-link">⚙️</Link>
+        </nav>
+      </div>
+    </header>
+  );
+};
+
+function App() {
+  return (
+    <AuthProvider>
+      <FavoritesProvider>
+        <Router>
+          <div className="app">
+            <AppNav />
+            <main className="app-main">
+              <Routes>
+                <Route path="/" element={<HomePage />} />
+                <Route path="/catalogue" element={<CatalogPage />} />
+                <Route path="/products/:productId" element={<ProductDetailPage />} />
+                <Route path="/checkout/:productId" element={<CheckoutPage />} />
+                <Route path="/profile/:userId" element={<ProfilePage />} />
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/register" element={<RegisterPage />} />
+                <Route path="/admin" element={<AdminPage />} />
+              </Routes>
+            </main>
+            <footer className="app-footer">
+              <p>© 2026 Mercato Nova. Tous droits réservés.</p>
+            </footer>
+          </div>
+        </Router>
+      </FavoritesProvider>
+    </AuthProvider>
+  );
+}
+
+export default App;

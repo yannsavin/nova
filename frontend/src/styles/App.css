@@ -1,0 +1,128 @@
+/* frontend/src/styles/App.css */
+/* Styles du composant App */
+
+.app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+.app-header {
+  background-color: var(--primary-color);
+  color: white;
+  padding: 1rem 0;
+  box-shadow: var(--shadow);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.header-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.header-content h1 {
+  font-size: 1.8rem;
+  font-weight: bold;
+}
+
+.app-logo {
+  font-size: 1.8rem;
+  font-weight: bold;
+  color: white;
+  text-decoration: none;
+  letter-spacing: 1px;
+}
+
+.header-content nav {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.header-content nav a {
+  color: white;
+  transition: color 0.3s ease;
+  padding: 0.5rem 1rem;
+  text-decoration: none;
+}
+
+.header-content nav a:hover {
+  color: var(--secondary-color);
+}
+
+.nav-profile-link {
+  font-weight: 600;
+}
+
+.nav-register-btn {
+  background: white;
+  color: var(--primary-color) !important;
+  border-radius: 20px;
+  padding: 0.4rem 1.2rem !important;
+  font-weight: 600;
+}
+
+.nav-register-btn:hover {
+  background: #f0f0f0;
+  color: var(--primary-color) !important;
+}
+
+.nav-logout-btn {
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 20px;
+  padding: 0.4rem 1.2rem;
+  cursor: pointer;
+  font-size: 0.95rem;
+  transition: background 0.2s;
+}
+
+.nav-logout-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.nav-admin-link {
+  font-size: 0.8rem;
+  opacity: 0.6;
+}
+
+.app-main {
+  flex: 1;
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 2rem 1rem;
+}
+
+.app-footer {
+  background-color: var(--primary-color);
+  color: white;
+  text-align: center;
+  padding: 2rem;
+  margin-top: auto;
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+  .header-content {
+    flex-direction: column;
+    gap: 1rem;
+    text-align: center;
+  }
+
+  .header-content nav {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .header-content h1 {
+    font-size: 1.4rem;
+  }
+}
