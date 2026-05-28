@@ -103,11 +103,7 @@
 }
 
 .product-price {
-  margin-bottom: 0.75rem;
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
+  margin-bottom: 0.4rem;
 }
 
 .price {
@@ -116,18 +112,27 @@
   color: var(--accent-color);
 }
 
-.condition {
-  font-size: 0.75rem;
-  background: var(--light-bg);
-  padding: 0.25rem 0.5rem;
-  border-radius: 3px;
-  color: #666;
-  text-transform: capitalize;
-}
-
 .no-price {
   color: #999;
   font-style: italic;
+  font-size: 0.95rem;
+}
+
+.product-tags {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+
+.pc-tag {
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: white;
+  padding: 3px 8px;
+  border-radius: 10px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
 }
 
 .product-actions {

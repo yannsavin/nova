@@ -66,6 +66,20 @@ class OrderController {
             $this->db->prepare("UPDATE utilisateurs SET nombre_achats = nombre_achats + 1 WHERE id = :id")
                      ->execute([':id' => $acheteurId]);
 
+            // Notifications
+            NotificationHelper::create(
+                $this->db, $acheteurId, 'achat_confirme',
+                'Achat confirmé',
+                'Votre achat de "' . $produit['titre'] . '" est confirmé. Commande : ' . $numCmd,
+                '/profile/' . $acheteurId
+            );
+            NotificationHelper::create(
+                $this->db, $vendeurId, 'vente_confirmee',
+                'Produit vendu !',
+                'Votre annonce "' . $produit['titre'] . '" a été achetée. Commande : ' . $numCmd,
+                '/profile/' . $vendeurId
+            );
+
             Response::success('Achat confirmé', ['numero_commande' => $numCmd], 201);
         } catch (Exception $e) {
             Response::serverError('Erreur: ' . $e->getMessage());

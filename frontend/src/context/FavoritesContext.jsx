@@ -1,28 +1,44 @@
-import React, { createContext, useState, useEffect } from 'react';
+import React, { createContext, useState, useEffect, useContext } from 'react';
+import { AuthContext } from './AuthContext';
 
 export const FavoritesContext = createContext();
 
+const getKey = (userId) => `nova_favorites_${userId ?? 'guest'}`;
+
 export const FavoritesProvider = ({ children }) => {
-  const [favorites, setFavorites] = useState(() => {
-    try { return JSON.parse(localStorage.getItem('nova_favorites')) || []; }
+  const { user } = useContext(AuthContext);
+  const userId = user?.id ?? null;
+
+  const [favoriteIds, setFavoriteIds] = useState(() => {
+    try { return JSON.parse(localStorage.getItem(getKey(userId))) || []; }
     catch { return []; }
   });
 
+  // Recharge les favoris quand l'utilisateur change (connexion / déconnexion)
   useEffect(() => {
-    localStorage.setItem('nova_favorites', JSON.stringify(favorites));
-  }, [favorites]);
+    try { setFavoriteIds(JSON.parse(localStorage.getItem(getKey(userId))) || []); }
+    catch { setFavoriteIds([]); }
+  }, [userId]);
+
+  useEffect(() => {
+    localStorage.setItem(getKey(userId), JSON.stringify(favoriteIds));
+  }, [favoriteIds, userId]);
 
   const toggleFavorite = (product) => {
-    setFavorites(prev => {
-      const exists = prev.find(p => p.id === product.id);
-      return exists ? prev.filter(p => p.id !== product.id) : [...prev, product];
-    });
+    const id = typeof product === 'object' ? product.id : product;
+    setFavoriteIds(prev =>
+      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
+    );
   };
 
-  const isFavorite = (productId) => favorites.some(p => p.id === productId);
+  const isFavorite = (productId) => favoriteIds.includes(productId);
+
+  const removeStaleFavorites = (validIds) => {
+    setFavoriteIds(prev => prev.filter(id => validIds.includes(id)));
+  };
 
   return (
-    <FavoritesContext.Provider value={{ favorites, toggleFavorite, isFavorite }}>
+    <FavoritesContext.Provider value={{ favoriteIds, toggleFavorite, isFavorite, removeStaleFavorites }}>
       {children}
     </FavoritesContext.Provider>
   );

@@ -25,6 +25,7 @@ require_once __DIR__ . '/../src/Utils/Response.php';
 require_once __DIR__ . '/../src/Utils/Validator.php';
 require_once __DIR__ . '/../src/Utils/Security.php';
 require_once __DIR__ . '/../src/Utils/ImageGenerator.php';
+require_once __DIR__ . '/../src/Utils/NotificationHelper.php';
 
 // Charger les middlewares
 require_once __DIR__ . '/../src/Middleware/AuthMiddleware.php';
@@ -38,6 +39,8 @@ require_once __DIR__ . '/../src/Controllers/UserController.php';
 require_once __DIR__ . '/../src/Controllers/ProductController.php';
 require_once __DIR__ . '/../src/Controllers/CartController.php';
 require_once __DIR__ . '/../src/Controllers/OrderController.php';
+require_once __DIR__ . '/../src/Controllers/NotificationController.php';
+require_once __DIR__ . '/../src/Controllers/AdminController.php';
 
 // Initialiser la connexion à la base de données
 $database = new Database();
@@ -143,6 +146,38 @@ try {
     } elseif (preg_match('/^api\/vendors\/(\d+)\/products$/', $path, $matches)) {
         $controller = new ProductController($db);
         $controller->getVendorProducts($matches[1]);
+
+    // Routes notifications
+    } elseif (preg_match('/^api\/notifications\/read-all$/', $path)) {
+        $controller = new NotificationController($db);
+        if ($method === 'PUT') $controller->markAllRead();
+    } elseif (preg_match('/^api\/notifications\/(\d+)\/read$/', $path, $matches)) {
+        $controller = new NotificationController($db);
+        if ($method === 'PUT') $controller->markRead($matches[1]);
+    } elseif (preg_match('/^api\/notifications$/', $path)) {
+        $controller = new NotificationController($db);
+        if ($method === 'GET') $controller->getForUser();
+
+    // Routes admin
+    } elseif (preg_match('/^api\/admin\/users\/(\d+)$/', $path, $matches)) {
+        $controller = new AdminController($db);
+        if ($method === 'PUT') $controller->updateUser($matches[1]);
+    } elseif (preg_match('/^api\/admin\/users$/', $path)) {
+        $controller = new AdminController($db);
+        if ($method === 'GET') $controller->listUsers();
+    } elseif (preg_match('/^api\/admin\/products\/(\d+)\/hide$/', $path, $matches)) {
+        $controller = new AdminController($db);
+        if ($method === 'PUT') $controller->hideProduct($matches[1]);
+    } elseif (preg_match('/^api\/admin\/products\/(\d+)\/restore$/', $path, $matches)) {
+        $controller = new AdminController($db);
+        if ($method === 'PUT') $controller->restoreProduct($matches[1]);
+    } elseif (preg_match('/^api\/admin\/products\/(\d+)$/', $path, $matches)) {
+        $controller = new AdminController($db);
+        if ($method === 'DELETE') $controller->deleteProduct($matches[1]);
+    } elseif (preg_match('/^api\/admin\/products$/', $path)) {
+        $controller = new AdminController($db);
+        if ($method === 'GET') $controller->listProducts();
+
     } else {
         Response::notFound('Endpoint non trouvé');
     }

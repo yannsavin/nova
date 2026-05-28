@@ -1,7 +1,8 @@
 import React, { useContext } from 'react';
-import { BrowserRouter as Router, Routes, Route, Link, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Link, Navigate, useNavigate } from 'react-router-dom';
 import { AuthProvider, AuthContext } from './context/AuthContext';
 import { FavoritesProvider } from './context/FavoritesContext';
+import NotificationBell from './components/NotificationBell';
 import HomePage from './pages/HomePage';
 import CatalogPage from './pages/CatalogPage';
 import ProfilePage from './pages/ProfilePage';
@@ -12,11 +13,20 @@ import RegisterPage from './pages/RegisterPage';
 import CheckoutPage from './pages/CheckoutPage';
 import './styles/App.css';
 
+// Garde de route admin — redirige si non admin
+const AdminRoute = ({ children }) => {
+  const { user, isAuthenticated } = useContext(AuthContext);
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (user?.role !== 'admin') return <Navigate to="/" replace />;
+  return children;
+};
+
 const AppNav = () => {
   const { user, isAuthenticated, logout } = useContext(AuthContext);
   const navigate = useNavigate();
 
   const handleLogout = async () => {
+    if (!window.confirm('Voulez-vous vraiment vous déconnecter ?')) return;
     await logout();
     navigate('/');
   };
@@ -33,6 +43,10 @@ const AppNav = () => {
               <Link to={`/profile/${user.id}`} className="nav-profile-link">
                 {user.prenom} {user.nom}
               </Link>
+              {user.role === 'admin' && (
+                <Link to="/admin" className="nav-admin-link">⚙️</Link>
+              )}
+              <NotificationBell />
               <button onClick={handleLogout} className="nav-logout-btn">Déconnexion</button>
             </>
           ) : (
@@ -41,7 +55,6 @@ const AppNav = () => {
               <Link to="/register" className="nav-register-btn">S'inscrire</Link>
             </>
           )}
-          <Link to="/admin" className="nav-admin-link">⚙️</Link>
         </nav>
       </div>
     </header>
@@ -64,7 +77,9 @@ function App() {
                 <Route path="/profile/:userId" element={<ProfilePage />} />
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/register" element={<RegisterPage />} />
-                <Route path="/admin" element={<AdminPage />} />
+                <Route path="/admin" element={
+                  <AdminRoute><AdminPage /></AdminRoute>
+                } />
               </Routes>
             </main>
             <footer className="app-footer">

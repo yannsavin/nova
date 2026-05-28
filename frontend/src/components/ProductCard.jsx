@@ -4,14 +4,25 @@ import { FaHeart, FaStar } from 'react-icons/fa';
 import { FavoritesContext } from '../context/FavoritesContext';
 import '../styles/ProductCard.css';
 
+const CONDITION_CONFIG = {
+  comme_neuf: { label: 'Comme neuf', color: '#1a7a3c' },
+  bon_etat:   { label: 'Bon état',   color: '#2ecc71' },
+  acceptable: { label: 'Acceptable', color: '#e67e22' },
+  pour_pieces:{ label: 'Pour pièces',color: '#e74c3c' },
+};
+
+const VENTE_CONFIG = {
+  achat_immediat: { label: 'Achat direct', color: '#2980b9' },
+  encheres:       { label: 'Enchère',      color: '#8e44ad' },
+  negociation:    { label: 'Négociation',  color: '#16a085' },
+};
+
 const ProductCard = ({ product }) => {
   const { toggleFavorite, isFavorite } = useContext(FavoritesContext);
   const fav = isFavorite(product.id);
 
-  const conditionLabels = {
-    comme_neuf: 'Comme neuf', bon_etat: 'Bon état',
-    acceptable: 'Acceptable', pour_pieces: 'Pour pièces',
-  };
+  const cond  = CONDITION_CONFIG[product.condition];
+  const vente = VENTE_CONFIG[product.type_vente];
 
   return (
     <div className="product-card">
@@ -44,15 +55,22 @@ const ProductCard = ({ product }) => {
         </div>
 
         <div className="product-price">
-          {product.prix_achat_immediat ? (
-            <>
-              <span className="price">{Number(product.prix_achat_immediat).toFixed(2)} €</span>
-              <span className="condition">
-                {conditionLabels[product.condition] || product.condition}
-              </span>
-            </>
-          ) : (
-            <span className="no-price">Prix à négocier</span>
+          {product.prix_achat_immediat
+            ? <span className="price">{Number(product.prix_achat_immediat).toFixed(2)} €</span>
+            : <span className="no-price">Prix à négocier</span>
+          }
+        </div>
+
+        <div className="product-tags">
+          {cond && (
+            <span className="pc-tag" style={{ background: cond.color }}>
+              {cond.label}
+            </span>
+          )}
+          {vente && (
+            <span className="pc-tag pc-tag-vente" style={{ background: vente.color }}>
+              {vente.label}
+            </span>
           )}
         </div>
 

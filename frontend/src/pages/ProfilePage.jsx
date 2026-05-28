@@ -30,7 +30,7 @@ const ProfilePage = () => {
   const { userId } = useParams();
   const navigate = useNavigate();
   const { user: authUser, logout } = useContext(AuthContext);
-  const { favorites, toggleFavorite } = useContext(FavoritesContext);
+  const { favoriteIds, toggleFavorite, removeStaleFavorites } = useContext(FavoritesContext);
   const isOwnProfile = authUser && authUser.id === parseInt(userId);
 
   const [user, setUser] = useState(null);
@@ -41,6 +41,8 @@ const ProfilePage = () => {
   const [activeTab, setActiveTab] = useState('info');
   const [purchases, setPurchases] = useState([]);
   const [purchasesLoading, setPurchasesLoading] = useState(false);
+  const [favProducts, setFavProducts] = useState([]);
+  const [favLoading, setFavLoading] = useState(false);
 
   // Formulaire produit
   const [showForm, setShowForm] = useState(false);
@@ -94,6 +96,29 @@ const ProfilePage = () => {
     setActiveTab(tab);
     if (tab === 'history' && isOwnProfile && purchases.length === 0) {
       loadPurchases();
+    }
+    if (tab === 'favorites' && isOwnProfile) {
+      loadFavorites();
+    }
+  };
+
+  const loadFavorites = async () => {
+    if (favoriteIds.length === 0) { setFavProducts([]); return; }
+    setFavLoading(true);
+    try {
+      const results = await Promise.all(
+        favoriteIds.map(id => productService.getProductById(id).catch(() => null))
+      );
+      const active = results
+        .filter(r => r?.data?.data?.product?.etat === 'active')
+        .map(r => r.data.data.product);
+      const validIds = active.map(p => p.id);
+      if (validIds.length !== favoriteIds.length) removeStaleFavorites(validIds);
+      setFavProducts(active);
+    } catch {
+      setFavProducts([]);
+    } finally {
+      setFavLoading(false);
     }
   };
 
@@ -270,7 +295,7 @@ const ProfilePage = () => {
         )}
         {isOwnProfile && (
           <button className={`tab-btn ${activeTab === 'favorites' ? 'active' : ''}`} onClick={() => handleTabChange('favorites')}>
-            <FaHeart style={{marginRight:'0.3rem',fontSize:'0.8rem'}}/>Favoris ({favorites.length})
+            <FaHeart style={{marginRight:'0.3rem',fontSize:'0.8rem'}}/>Favoris ({favoriteIds.length})
           </button>
         )}
         {isOwnProfile && (
@@ -530,14 +555,16 @@ const ProfilePage = () => {
         {/* ONGLET FAVORIS */}
         {activeTab === 'favorites' && isOwnProfile && (
           <div className="tab-content favorites-tab">
-            {favorites.length === 0 ? (
+            {favLoading ? (
+              <p className="empty-message">Chargement des favoris...</p>
+            ) : favProducts.length === 0 ? (
               <div className="empty-products">
                 <p>Vous n'avez pas encore de favoris.</p>
                 <p>Cliquez sur ❤️ sur une annonce pour l'ajouter ici.</p>
               </div>
             ) : (
               <div className="products-grid-manage">
-                {favorites.map(product => (
+                {favProducts.map(product => (
                   <div key={product.id} className="product-manage-card">
                     <div className="pmc-image">
                       {product.image_principale
@@ -555,7 +582,7 @@ const ProfilePage = () => {
                     </div>
                     <div className="pmc-actions">
                       <Link to={`/products/${product.id}`} className="pmc-btn pmc-btn-view" title="Voir"><FaEye /></Link>
-                      <button className="pmc-btn pmc-btn-delete" onClick={() => toggleFavorite(product)} title="Retirer des favoris">
+                      <button className="pmc-btn pmc-btn-delete" onClick={() => toggleFavorite(product.id)} title="Retirer des favoris">
                         <FaHeart />
                       </button>
                     </div>
