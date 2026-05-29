@@ -94,6 +94,7 @@ const ProductDetailPage = () => {
       setBidMessage(res.data?.message || 'Enchère clôturée');
       const updated = await auctionService.getAuction(product.id);
       setAuction(updated.data.data);
+      setAuctionHistory(updated.data.data?.history || []);
     } catch (err) {
       setBidMessage(err.response?.data?.message || 'Impossible de clôturer l\'enchère');
     } finally {
@@ -110,6 +111,7 @@ const ProductDetailPage = () => {
       setBidMessage(res.data?.message || 'Offre enregistrée');
       const updated = await auctionService.getAuction(product.id);
       setAuction(updated.data.data);
+      setAuctionHistory(updated.data.data?.history || []);
       setBidAmount('');
     } catch (err) {
       setBidMessage(err.response?.data?.message || 'Impossible d\'enregistrer l\'offre');

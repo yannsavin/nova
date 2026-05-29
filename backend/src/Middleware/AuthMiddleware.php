@@ -12,7 +12,7 @@ class AuthMiddleware {
 
     // Middleware pour vérifier l'authentification
     public function require() {
-        session_start();
+        if (session_status() === PHP_SESSION_NONE) session_start();
         
         if (!isset($_SESSION['user_id'])) {
             Response::unauthorized('Veuillez vous authentifier');
@@ -21,7 +21,7 @@ class AuthMiddleware {
 
     // Middleware pour vérifier un rôle spécifique
     public function requireRole($role) {
-        session_start();
+        if (session_status() === PHP_SESSION_NONE) session_start();
         
         if (!isset($_SESSION['user_id'])) {
             Response::unauthorized('Veuillez vous authentifier');
@@ -34,7 +34,7 @@ class AuthMiddleware {
 
     // Middleware pour vérifier plusieurs rôles
     public function requireRoles($roles) {
-        session_start();
+        if (session_status() === PHP_SESSION_NONE) session_start();
         
         if (!isset($_SESSION['user_id'])) {
             Response::unauthorized('Veuillez vous authentifier');
@@ -47,7 +47,7 @@ class AuthMiddleware {
 
     // Obtenir l'utilisateur actuel
     public function getCurrentUser() {
-        session_start();
+        if (session_status() === PHP_SESSION_NONE) session_start();
         
         if (isset($_SESSION['user_id'])) {
             return [
@@ -88,7 +88,7 @@ class AuthMiddleware {
 
     // Déconnexion
     public function logout() {
-        session_start();
+        if (session_status() === PHP_SESSION_NONE) session_start();
         session_destroy();
     }
 }
