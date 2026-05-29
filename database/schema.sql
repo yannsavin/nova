@@ -98,6 +98,18 @@ CREATE TABLE encheres (
   KEY idx_statut (statut)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE offres_encheres (
+  id INT PRIMARY KEY AUTO_INCREMENT,
+  enchere_id INT NOT NULL,
+  encherisseur_id INT NOT NULL,
+  montant DECIMAL(10,2) NOT NULL,
+  date_offre TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (enchere_id) REFERENCES encheres(id) ON DELETE CASCADE,
+  FOREIGN KEY (encherisseur_id) REFERENCES utilisateurs(id) ON DELETE CASCADE,
+  KEY idx_enchere_id (enchere_id),
+  KEY idx_encherisseur_id (encherisseur_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE negociations (
   id INT PRIMARY KEY AUTO_INCREMENT,
   produit_id INT NOT NULL,

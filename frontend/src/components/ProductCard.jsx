@@ -23,6 +23,9 @@ const ProductCard = ({ product }) => {
 
   const cond  = CONDITION_CONFIG[product.condition];
   const vente = VENTE_CONFIG[product.type_vente];
+  const currentPrice = product.type_vente === 'encheres'
+    ? (product.prix_actuel ?? product.prix_affiche ?? product.prix_achat_immediat ?? 0)
+    : (product.prix_achat_immediat ?? 0);
 
   return (
     <div className="product-card">
@@ -55,11 +58,18 @@ const ProductCard = ({ product }) => {
         </div>
 
         <div className="product-price">
-          {product.prix_achat_immediat
-            ? <span className="price">{Number(product.prix_achat_immediat).toFixed(2)} €</span>
-            : <span className="no-price">Prix à négocier</span>
+          {product.type_vente === 'encheres'
+            ? <span className="price">{Number(currentPrice).toFixed(2)} €</span>
+            : product.prix_achat_immediat
+              ? <span className="price">{Number(product.prix_achat_immediat).toFixed(2)} €</span>
+              : <span className="no-price">Prix à négocier</span>
           }
         </div>
+        {product.type_vente === 'encheres' && (
+          <div className="product-auction-meta">
+            <span className="auction-bid-count">🔨 {Number(product.nombre_encheres || 0)} offre(s)</span>
+          </div>
+        )}
 
         <div className="product-tags">
           {cond && (

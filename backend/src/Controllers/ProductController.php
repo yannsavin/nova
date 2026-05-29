@@ -103,20 +103,57 @@ class ProductController {
                 Response::error('Titre, description et catégorie sont requis');
                 return;
             }
-            $query = "INSERT INTO produits (titre, description, categorie_id, vendeur_id, prix_achat_immediat, `condition`, type_vente, quantite)
-                      VALUES (:titre, :description, :categorie_id, :vendeur_id, :prix, :condition, :type_vente, :quantite)";
+
+            $typeVente = $data['type_vente'] ?? 'achat_immediat';
+            $prixDepart = (isset($data['prix_depart']) && $data['prix_depart'] !== '')
+                ? (float)$data['prix_depart']
+                : ((isset($data['prix_achat_immediat']) && $data['prix_achat_immediat'] !== '')
+                    ? (float)$data['prix_achat_immediat']
+                    : null);
+            $prixReserve = (isset($data['prix_maximum']) && $data['prix_maximum'] !== '')
+                ? (float)$data['prix_maximum']
+                : ((isset($data['prix_reserve_encheres']) && $data['prix_reserve_encheres'] !== '')
+                    ? (float)$data['prix_reserve_encheres']
+                    : null);
+
+            if ($typeVente === 'encheres' && ($prixDepart === null || $prixDepart < 0)) {
+                Response::error('Une enchère doit avoir un prix de départ valide');
+                return;
+            }
+
+            if ($typeVente === 'encheres' && $prixReserve !== null && $prixReserve < $prixDepart) {
+                Response::error('Le prix maximum ne peut pas être inférieur au prix de départ');
+                return;
+            }
+
+            $query = "INSERT INTO produits (titre, description, categorie_id, vendeur_id, prix_achat_immediat, prix_reserve_encheres, `condition`, type_vente, quantite)
+                      VALUES (:titre, :description, :categorie_id, :vendeur_id, :prix, :prix_reserve, :condition, :type_vente, :quantite)";
             $stmt = $this->db->prepare($query);
             $stmt->execute([
-                ':titre'        => $data['titre'],
-                ':description'  => $data['description'],
-                ':categorie_id' => (int)$data['categorie_id'],
-                ':vendeur_id'   => $_SESSION['user_id'],
-                ':prix'         => !empty($data['prix_achat_immediat']) ? (float)$data['prix_achat_immediat'] : null,
-                ':condition'    => $data['condition'] ?? 'bon_etat',
-                ':type_vente'   => $data['type_vente'] ?? 'achat_immediat',
-                ':quantite'     => (int)($data['quantite'] ?? 1),
+                ':titre'         => $data['titre'],
+                ':description'   => $data['description'],
+                ':categorie_id'  => (int)$data['categorie_id'],
+                ':vendeur_id'    => $_SESSION['user_id'],
+                ':prix'          => $prixDepart,
+                ':prix_reserve'  => $prixReserve,
+                ':condition'     => $data['condition'] ?? 'bon_etat',
+                ':type_vente'    => $typeVente,
+                ':quantite'      => (int)($data['quantite'] ?? 1),
             ]);
             $newId = $this->db->lastInsertId();
+
+            if ($typeVente === 'encheres') {
+                $dateFin = $data['date_fin'] ?? date('Y-m-d H:i:s', strtotime('+7 days'));
+                $this->db->prepare("INSERT INTO encheres (produit_id, prix_minimum, prix_actuel, date_fin, statut, meilleur_encherisseur_id, nombre_encheres)
+                    VALUES (:produit_id, :prix_minimum, :prix_actuel, :date_fin, 'en_cours', NULL, 0)")
+                    ->execute([
+                        ':produit_id' => $newId,
+                        ':prix_minimum' => $prixDepart,
+                        ':prix_actuel' => $prixDepart,
+                        ':date_fin' => $dateFin,
+                    ]);
+            }
+
             Response::success('Produit créé', ['id' => $newId], 201);
         } catch (Exception $e) {
             Response::serverError('Erreur: ' . $e->getMessage());
@@ -139,6 +176,39 @@ class ProductController {
                 return;
             }
             $this->productModel->update($id, $data);
+            if (($data['type_vente'] ?? null) === 'encheres' || isset($data['prix_reserve_encheres']) || isset($data['prix_achat_immediat'])) {
+                $auction = $this->db->prepare("SELECT id FROM encheres WHERE produit_id = :id LIMIT 1");
+                $auction->execute([':id' => $id]);
+                $auctionRow = $auction->fetch();
+                $prixDepart = (isset($data['prix_depart']) && $data['prix_depart'] !== '')
+                    ? (float)$data['prix_depart']
+                    : ((isset($data['prix_achat_immediat']) && $data['prix_achat_immediat'] !== '')
+                        ? (float)$data['prix_achat_immediat']
+                        : null);
+                $prixReserve = (isset($data['prix_maximum']) && $data['prix_maximum'] !== '')
+                    ? (float)$data['prix_maximum']
+                    : ((isset($data['prix_reserve_encheres']) && $data['prix_reserve_encheres'] !== '')
+                        ? (float)$data['prix_reserve_encheres']
+                        : null);
+                if ($auctionRow) {
+                    $auctionUpdates = [];
+                    $params = [':auction_id' => $auctionRow['id']];
+                    if ($prixDepart !== null) {
+                        $auctionUpdates[] = 'prix_minimum = :prix_minimum';
+                        $auctionUpdates[] = 'prix_actuel = COALESCE(prix_actuel, :prix_actuel)';
+                        $params[':prix_minimum'] = $prixDepart;
+                        $params[':prix_actuel'] = $prixDepart;
+                    }
+                    if (isset($data['date_fin']) && $data['date_fin'] !== '') {
+                        $auctionUpdates[] = 'date_fin = :date_fin';
+                        $params[':date_fin'] = $data['date_fin'];
+                    }
+                    if (!empty($auctionUpdates)) {
+                        $this->db->prepare("UPDATE encheres SET " . implode(', ', $auctionUpdates) . " WHERE id = :auction_id")
+                            ->execute($params);
+                    }
+                }
+            }
             Response::success('Produit mis à jour');
         } catch (Exception $e) {
             Response::serverError('Erreur: ' . $e->getMessage());

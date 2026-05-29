@@ -4,6 +4,7 @@ import { FaHeart, FaStar, FaChevronLeft, FaChevronRight, FaBolt } from 'react-ic
 import { AuthContext } from '../context/AuthContext';
 import { FavoritesContext } from '../context/FavoritesContext';
 import productService from '../services/productService';
+import auctionService from '../services/auctionService';
 import '../styles/ProductDetailPage.css';
 
 const ProductDetailPage = () => {
@@ -16,13 +17,61 @@ const ProductDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [auction, setAuction] = useState(null);
+  const [auctionHistory, setAuctionHistory] = useState([]);
+  const [bidAmount, setBidAmount] = useState('');
+  const [bidLoading, setBidLoading] = useState(false);
+  const [bidMessage, setBidMessage] = useState('');
+  const [timeLeft, setTimeLeft] = useState('');
 
   useEffect(() => {
-    productService.getProductById(productId)
-      .then(res => setProduct(res.data.data?.product))
-      .catch(() => setError('Erreur lors du chargement du produit'))
-      .finally(() => setLoading(false));
+    const loadProduct = async () => {
+      try {
+        const res = await productService.getProductById(productId);
+        const currentProduct = res.data.data?.product || null;
+        setProduct(currentProduct);
+
+        if (currentProduct?.type_vente === 'encheres') {
+          try {
+            const auctionRes = await auctionService.getAuction(productId);
+            setAuction(auctionRes.data?.data || null);
+            setAuctionHistory(auctionRes.data?.data?.history || []);
+          } catch {
+            setAuction(null);
+            setAuctionHistory([]);
+          }
+        }
+      } catch {
+        setError('Erreur lors du chargement du produit');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadProduct();
   }, [productId]);
+
+  const currentAuctionPrice = auction?.auction?.prix_actuel ?? product?.prix_affiche ?? product?.prix_achat_immediat ?? 0;
+  const auctionEnd = auction?.auction?.date_fin || product?.date_fin_enchere;
+
+  useEffect(() => {
+    if (!auctionEnd) return;
+    const updateCountdown = () => {
+      const diff = new Date(auctionEnd).getTime() - Date.now();
+      if (diff <= 0) {
+        setTimeLeft('Enchère terminée');
+        return;
+      }
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+      const minutes = Math.floor((diff / (1000 * 60)) % 60);
+      const seconds = Math.floor((diff / 1000) % 60);
+      setTimeLeft(`${days}j ${hours}h ${minutes}m ${seconds}s`);
+    };
+    updateCountdown();
+    const timer = setInterval(updateCountdown, 1000);
+    return () => clearInterval(timer);
+  }, [auctionEnd]);
 
   if (loading) return <div className="product-detail-loading">Chargement du produit...</div>;
   if (error)   return <div className="product-detail-error">{error}</div>;
@@ -38,6 +87,36 @@ const ProductDetailPage = () => {
   const canBuy  = isAuthenticated && !isOwner && product.type_vente === 'achat_immediat' && product.etat === 'active';
 
   const handleBuy = () => navigate(`/checkout/${product.id}`);
+  const handleCloseAuction = async () => {
+    try {
+      setBidLoading(true);
+      const res = await auctionService.closeAuction(product.id);
+      setBidMessage(res.data?.message || 'Enchère clôturée');
+      const updated = await auctionService.getAuction(product.id);
+      setAuction(updated.data.data);
+    } catch (err) {
+      setBidMessage(err.response?.data?.message || 'Impossible de clôturer l\'enchère');
+    } finally {
+      setBidLoading(false);
+    }
+  };
+  const handleBid = async (e) => {
+    e.preventDefault();
+    if (!isAuthenticated) return;
+    setBidLoading(true);
+    setBidMessage('');
+    try {
+      const res = await auctionService.placeBid(product.id, Number(bidAmount));
+      setBidMessage(res.data?.message || 'Offre enregistrée');
+      const updated = await auctionService.getAuction(product.id);
+      setAuction(updated.data.data);
+      setBidAmount('');
+    } catch (err) {
+      setBidMessage(err.response?.data?.message || 'Impossible d\'enregistrer l\'offre');
+    } finally {
+      setBidLoading(false);
+    }
+  };
   const handleFav = () => toggleFavorite(product);
 
   const conditionLabels = {
@@ -110,12 +189,59 @@ const ProductDetailPage = () => {
           {/* Prix */}
           <div className="price-section">
             <span className="price">
-              {product.prix_achat_immediat ? `${Number(product.prix_achat_immediat).toFixed(2)} €` : 'Prix à négocier'}
+              {product.type_vente === 'encheres'
+                ? `${Number(currentAuctionPrice).toFixed(2)} €`
+                : product.prix_achat_immediat ? `${Number(product.prix_achat_immediat).toFixed(2)} €` : 'Prix à négocier'}
             </span>
             {product.type_vente === 'achat_immediat' && <span className="price-label">Prix fixe</span>}
             {product.type_vente === 'encheres'       && <span className="price-label auction">Enchère en cours</span>}
             {product.type_vente === 'negociation'    && <span className="price-label nego">Prix négociable</span>}
           </div>
+
+          {product.type_vente === 'encheres' && (
+            <div className="auction-box">
+              <h3>Enchérir</h3>
+              <p>Prix actuel : <strong>{Number(currentAuctionPrice).toFixed(2)} €</strong></p>
+              <p>Offres enregistrées : <strong>{auction?.auction?.nombre_encheres || product.nombre_encheres || 0}</strong></p>
+              <p>Fin de l’enchère : <strong>{timeLeft || '—'}</strong></p>
+              <p className="auction-meta">{Number(product.nombre_encheres || auction?.auction?.nombre_encheres || 0)} offre(s) enregistrée(s)</p>
+              <form onSubmit={handleBid} className="auction-bid-form">
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={bidAmount}
+                  onChange={(e) => setBidAmount(e.target.value)}
+                  placeholder="Votre offre"
+                />
+                <button type="submit" disabled={bidLoading}>{bidLoading ? 'Envoi...' : 'Enchérir'}</button>
+              </form>
+              {isOwner && (
+                <button type="button" className="btn-close-auction" onClick={handleCloseAuction} disabled={bidLoading}>
+                  {bidLoading ? 'Clôture...' : 'Clôturer l’enchère'}
+                </button>
+              )}
+              {bidMessage && <p className="auction-feedback">{bidMessage}</p>}
+            </div>
+          )}
+
+          {product.type_vente === 'encheres' && (
+            <div className="auction-history-box">
+              <h3>Historique des offres</h3>
+              {auctionHistory.length ? (
+                <ul className="auction-history-list">
+                  {auctionHistory.slice(0, 8).map(item => (
+                    <li key={item.id}>
+                      <span>{item.prenom} {item.nom}</span>
+                      <strong>{Number(item.montant).toFixed(2)} €</strong>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p>Aucune offre n’a encore été enregistrée.</p>
+              )}
+            </div>
+          )}
 
           {/* Actions */}
           <div className="purchase-actions">
@@ -147,6 +273,21 @@ const ProductDetailPage = () => {
           <div className="product-views">👁 {product.nombre_vues || 0} vues</div>
         </div>
       </div>
+
+      {product.type_vente === 'encheres' && auctionHistory.length > 0 && (
+        <div className="product-description-section">
+          <h2>Historique des enchères</h2>
+          <ul className="auction-history-list">
+            {auctionHistory.map((bid) => (
+              <li key={bid.id} className="auction-history-item">
+                <strong>{bid.prenom || ''} {bid.nom || ''}</strong>
+                <span>{Number(bid.montant).toFixed(2)} €</span>
+                <small>{new Date(bid.date_offre).toLocaleString('fr-FR')}</small>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {/* Description */}
       <div className="product-description-section">

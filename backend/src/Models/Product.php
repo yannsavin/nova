@@ -34,10 +34,17 @@ class Product {
 
     // Obtenir un produit par ID
     public function getById($id) {
-        $query = "SELECT p.*, u.nom, u.prenom, u.reputation, c.nom as categorie_nom
+        $query = "SELECT p.*, u.nom, u.prenom, u.reputation, c.nom as categorie_nom,
+                         COALESCE(e.prix_actuel, p.prix_achat_immediat) AS prix_affiche,
+                         COALESCE(e.nombre_encheres, 0) AS nombre_encheres,
+                         e.prix_minimum AS prix_depart,
+                         e.prix_actuel AS prix_actuel,
+                         e.date_fin,
+                         e.statut AS statut_enchere
                  FROM " . $this->table . " p
                  JOIN utilisateurs u ON p.vendeur_id = u.id
                  JOIN categories c ON p.categorie_id = c.id
+                 LEFT JOIN encheres e ON e.produit_id = p.id
                  WHERE p.id = :id AND p.etat = 'active' LIMIT 1";
 
         $stmt = $this->db->prepare($query);
@@ -55,10 +62,17 @@ class Product {
 
     // Rechercher les produits
     public function search($params = []) {
-        $query = "SELECT p.*, u.nom, u.prenom, c.nom as categorie_nom
+        $query = "SELECT p.*, u.nom, u.prenom, c.nom as categorie_nom,
+                         COALESCE(e.prix_actuel, p.prix_achat_immediat) AS prix_affiche,
+                         COALESCE(e.nombre_encheres, 0) AS nombre_encheres,
+                         e.prix_minimum AS prix_depart,
+                         e.prix_actuel AS prix_actuel,
+                         e.date_fin,
+                         e.statut AS statut_enchere
                  FROM " . $this->table . " p
                  JOIN utilisateurs u ON p.vendeur_id = u.id
                  JOIN categories c ON p.categorie_id = c.id
+                 LEFT JOIN encheres e ON e.produit_id = p.id
                  WHERE p.etat = 'active'";
 
         // Recherche texte (recherche simple sans FULLTEXT)
@@ -167,7 +181,7 @@ class Product {
 
     // Mettre à jour un produit
     public function update($id, $data) {
-        $allowed = ['titre', 'description', 'categorie_id', 'prix_achat_immediat', 'condition', 'type_vente', 'quantite'];
+        $allowed = ['titre', 'description', 'categorie_id', 'prix_achat_immediat', 'prix_reserve_encheres', 'condition', 'type_vente', 'quantite'];
         $fields = [];
         $params = [':id' => $id];
         foreach ($data as $key => $value) {

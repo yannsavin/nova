@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, useRef } from 'react';
+import React, { useState, useEffect, useContext, useRef, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { FaStar, FaEdit, FaSignOutAlt, FaPlus, FaTrash, FaEye, FaTimes, FaCheck, FaCamera, FaHeart } from 'react-icons/fa';
 import { AuthContext } from '../context/AuthContext';
@@ -10,6 +10,7 @@ import '../styles/ProfilePage.css';
 
 const EMPTY_FORM = {
   titre: '', description: '', categorie_id: '', prix_achat_immediat: '',
+  prix_depart: '', prix_maximum: '', date_fin: '',
   condition: 'bon_etat', type_vente: 'achat_immediat', quantite: 1,
 };
 
@@ -55,10 +56,10 @@ const ProfilePage = () => {
   const [imagePreviews, setImagePreviews] = useState([]);
   const fileInputRef = useRef(null);
 
-  const loadProducts = async () => {
+  const loadProducts = useCallback(async () => {
     const res = await productService.getVendorProducts(userId);
     setUserProducts(res.data.data?.products || []);
-  };
+  }, [userId]);
 
   useEffect(() => {
     const load = async () => {
@@ -78,7 +79,7 @@ const ProfilePage = () => {
       }
     };
     load();
-  }, [userId]);
+  }, [loadProducts, userId]);
 
   const loadPurchases = async () => {
     setPurchasesLoading(true);
@@ -152,6 +153,9 @@ const ProfilePage = () => {
       description: product.description || '',
       categorie_id: product.categorie_id || '',
       prix_achat_immediat: product.prix_achat_immediat || '',
+      prix_depart: product.prix_achat_immediat || '',
+      prix_maximum: product.prix_reserve_encheres || '',
+      date_fin: product.date_fin_enchere || product.date_fin || '',
       condition: product.condition || 'bon_etat',
       type_vente: product.type_vente || 'achat_immediat',
       quantite: product.quantite || 1,
@@ -200,11 +204,17 @@ const ProfilePage = () => {
     setFormLoading(true);
     try {
       let productId = editingProduct?.id;
+      const payload = { ...formData };
+      if (payload.type_vente === 'encheres') {
+        payload.prix_depart = payload.prix_depart ?? payload.prix_achat_immediat ?? 0;
+        payload.prix_achat_immediat = Number(payload.prix_depart || 0);
+        payload.prix_reserve_encheres = payload.prix_maximum !== '' && payload.prix_maximum != null ? Number(payload.prix_maximum) : null;
+      }
 
       if (editingProduct) {
-        await apiClient.put(`/products/${productId}`, formData);
+        await apiClient.put(`/products/${productId}`, payload);
       } else {
-        const res = await apiClient.post('/products', formData);
+        const res = await apiClient.post('/products', payload);
         productId = res.data.data?.id;
       }
 
@@ -393,8 +403,16 @@ const ProfilePage = () => {
                           </select>
                         </div>
                         <div className="pf-group">
-                          <label>Prix (€)</label>
-                          <input name="prix_achat_immediat" type="number" min="0" step="0.01" value={formData.prix_achat_immediat} onChange={handleFormChange} placeholder="0.00" />
+                          <label>{formData.type_vente === 'encheres' ? 'Prix de départ (€)' : 'Prix (€)'}</label>
+                          <input
+                            name={formData.type_vente === 'encheres' ? 'prix_depart' : 'prix_achat_immediat'}
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={formData.type_vente === 'encheres' ? formData.prix_depart : formData.prix_achat_immediat}
+                            onChange={handleFormChange}
+                            placeholder="0.00"
+                          />
                         </div>
                         <div className="pf-group">
                           <label>État</label>
@@ -407,6 +425,19 @@ const ProfilePage = () => {
                           <input name="quantite" type="number" min="1" value={formData.quantite} onChange={handleFormChange} />
                         </div>
                       </div>
+
+                      {formData.type_vente === 'encheres' && (
+                        <div className="pf-row">
+                          <div className="pf-group">
+                            <label>Prix maximum / réserve (€)</label>
+                            <input name="prix_maximum" type="number" min="0" step="0.01" value={formData.prix_maximum} onChange={handleFormChange} placeholder="0.00" />
+                          </div>
+                          <div className="pf-group">
+                            <label>Date de fin</label>
+                            <input name="date_fin" type="datetime-local" value={formData.date_fin} onChange={handleFormChange} />
+                          </div>
+                        </div>
+                      )}
 
                       {/* Zone upload images */}
                       <div className="pf-group">

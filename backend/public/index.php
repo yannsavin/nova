@@ -33,10 +33,12 @@ require_once __DIR__ . '/../src/Middleware/AuthMiddleware.php';
 // Charger les modèles
 require_once __DIR__ . '/../src/Models/User.php';
 require_once __DIR__ . '/../src/Models/Product.php';
+require_once __DIR__ . '/../src/Models/Auction.php';
 
 // Charger les contrôleurs
 require_once __DIR__ . '/../src/Controllers/UserController.php';
 require_once __DIR__ . '/../src/Controllers/ProductController.php';
+require_once __DIR__ . '/../src/Controllers/AuctionController.php';
 require_once __DIR__ . '/../src/Controllers/CartController.php';
 require_once __DIR__ . '/../src/Controllers/OrderController.php';
 require_once __DIR__ . '/../src/Controllers/NotificationController.php';
@@ -100,6 +102,23 @@ try {
             $controller->update($matches[1]);
         } elseif ($method === 'DELETE') {
             $controller->delete($matches[1]);
+        }
+    } elseif (preg_match('/^api\/products\/(\d+)\/auction$/', $path, $matches)) {
+        $controller = new AuctionController($db);
+        if ($method === 'GET') {
+            $controller->getAuction($matches[1]);
+        } elseif ($method === 'POST') {
+            $controller->placeBid($matches[1]);
+        }
+    } elseif (preg_match('/^api\/products\/(\d+)\/auction\/close$/', $path, $matches)) {
+        $controller = new AuctionController($db);
+        if ($method === 'POST') {
+            $controller->close($matches[1]);
+        }
+    } elseif (preg_match('/^api\/products\/(\d+)\/auction\/history$/', $path, $matches)) {
+        $controller = new AuctionController($db);
+        if ($method === 'GET') {
+            $controller->history($matches[1]);
         }
     } elseif (preg_match('/^api\/users\/(\d+)$/', $path, $matches)) {
         $controller = new UserController($db);
