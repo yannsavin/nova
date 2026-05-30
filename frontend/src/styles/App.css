@@ -60,6 +60,30 @@
   font-weight: 600;
 }
 
+.nav-cart-link {
+  position: relative;
+  font-size: 1.2rem;
+  text-decoration: none;
+  color: white;
+  display: flex;
+  align-items: center;
+}
+
+.cart-badge {
+  position: absolute;
+  top: -8px;
+  right: -10px;
+  background: #e74c3c;
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 700;
+  border-radius: 50%;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
 .nav-register-btn {
   background: white;
   color: var(--primary-color) !important;

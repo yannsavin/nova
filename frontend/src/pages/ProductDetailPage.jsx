@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { FaHeart, FaStar, FaChevronLeft, FaChevronRight, FaBolt } from 'react-icons/fa';
+import { FaHeart, FaStar, FaChevronLeft, FaChevronRight, FaBolt, FaShoppingCart } from 'react-icons/fa';
 import { AuthContext } from '../context/AuthContext';
 import { FavoritesContext } from '../context/FavoritesContext';
+import { CartContext } from '../context/CartContext';
 import productService from '../services/productService';
 import auctionService from '../services/auctionService';
 import '../styles/ProductDetailPage.css';
@@ -12,6 +13,7 @@ const ProductDetailPage = () => {
   const navigate = useNavigate();
   const { user, isAuthenticated } = useContext(AuthContext);
   const { toggleFavorite, isFavorite } = useContext(FavoritesContext);
+  const { addItem } = useContext(CartContext);
 
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -23,6 +25,7 @@ const ProductDetailPage = () => {
   const [bidLoading, setBidLoading] = useState(false);
   const [bidMessage, setBidMessage] = useState('');
   const [timeLeft, setTimeLeft] = useState('');
+  const [cartMsg, setCartMsg] = useState('');
 
   useEffect(() => {
     const loadProduct = async () => {
@@ -85,8 +88,16 @@ const ProductDetailPage = () => {
   const fav = isFavorite(product.id);
   const isOwner = isAuthenticated && user?.id === product.vendeur_id;
   const canBuy  = isAuthenticated && !isOwner && product.type_vente === 'achat_immediat' && product.etat === 'active';
+  const canAddToCart = canBuy && user?.role === 'acheteur';
+
+  const handleAddToCart = () => {
+    addItem(product, 1);
+    setCartMsg('Ajouté au panier !');
+    setTimeout(() => setCartMsg(''), 2500);
+  };
 
   const handleBuy = () => navigate(`/checkout/${product.id}`);
+
   const handleCloseAuction = async () => {
     try {
       setBidLoading(true);
@@ -101,6 +112,7 @@ const ProductDetailPage = () => {
       setBidLoading(false);
     }
   };
+
   const handleBid = async (e) => {
     e.preventDefault();
     if (!isAuthenticated) return;
@@ -119,6 +131,7 @@ const ProductDetailPage = () => {
       setBidLoading(false);
     }
   };
+
   const handleFav = () => toggleFavorite(product);
 
   const conditionLabels = {
@@ -256,6 +269,13 @@ const ProductDetailPage = () => {
                 <FaBolt /> Acheter maintenant
               </button>
             )}
+
+            {canAddToCart && (
+              <button className="btn-add-to-cart" onClick={handleAddToCart}>
+                <FaShoppingCart /> Ajouter au panier
+              </button>
+            )}
+            {cartMsg && <p className="cart-feedback">{cartMsg}</p>}
 
             {isAuthenticated && !isOwner && product.etat === 'active' && product.type_vente !== 'achat_immediat' && (
               <button className="btn-contact">Contacter le vendeur</button>

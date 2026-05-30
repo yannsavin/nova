@@ -5,23 +5,25 @@ import React, { createContext, useState, useEffect } from 'react';
 
 export const CartContext = createContext();
 
-export const CartProvider = ({ children }) => {
+export const CartProvider = ({ children, user }) => {
+  const cartKey = user?.id ? `cart_${user.id}` : 'cart_guest';
+
   const [items, setItems] = useState([]);
   const [total, setTotal] = useState(0);
 
-  // Charger le panier depuis le localStorage
+  // Charger le bon panier quand l'utilisateur change
   useEffect(() => {
-    const savedCart = localStorage.getItem('cart');
+    const savedCart = localStorage.getItem(cartKey);
     if (savedCart) {
       setItems(JSON.parse(savedCart));
     }
-  }, []);
+  }, [cartKey]);
 
   // Mettre à jour le localStorage quand le panier change
   useEffect(() => {
-    localStorage.setItem('cart', JSON.stringify(items));
+    localStorage.setItem(cartKey, JSON.stringify(items));
     calculateTotal();
-  }, [items]);
+  }, [items, cartKey]);
 
   const calculateTotal = () => {
     const newTotal = items.reduce(
@@ -33,6 +35,7 @@ export const CartProvider = ({ children }) => {
 
   const addItem = (product, quantity = 1) => {
     const existingItem = items.find((item) => item.id === product.id);
+    const prix_unitaire = product.prix_unitaire ?? product.prix_achat_immediat ?? 0;
 
     if (existingItem) {
       setItems(
@@ -43,7 +46,7 @@ export const CartProvider = ({ children }) => {
         )
       );
     } else {
-      setItems([...items, { ...product, quantite: quantity }]);
+      setItems([...items, { ...product, prix_unitaire, quantite: quantity }]);
     }
   };
 
