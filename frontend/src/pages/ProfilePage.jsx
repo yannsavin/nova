@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useContext, useRef, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { FaStar, FaEdit, FaSignOutAlt, FaPlus, FaTrash, FaEye, FaTimes, FaCheck, FaCamera, FaHeart } from 'react-icons/fa';
+import { FaStar, FaEdit, FaSignOutAlt, FaPlus, FaTrash, FaEye, FaTimes, FaCheck, FaCamera, FaHeart, FaComments } from 'react-icons/fa';
 import { AuthContext } from '../context/AuthContext';
 import { FavoritesContext } from '../context/FavoritesContext';
 import userService from '../services/userService';
 import productService from '../services/productService';
+import negociationService from '../services/negociationService';
+import ChatModal from '../components/ChatModal';
 import apiClient from '../services/apiClient';
 import '../styles/ProfilePage.css';
 
@@ -44,6 +46,13 @@ const ProfilePage = () => {
   const [purchasesLoading, setPurchasesLoading] = useState(false);
   const [favProducts, setFavProducts] = useState([]);
   const [favLoading, setFavLoading] = useState(false);
+  const [editingInfo, setEditingInfo] = useState(false);
+  const [infoForm, setInfoForm] = useState({ telephone: '', ville: '', bio: '' });
+  const [infoSaving, setInfoSaving] = useState(false);
+  const [infoMsg, setInfoMsg] = useState('');
+  const [negociations, setNegociations] = useState([]);
+  const [negoLoading, setNegoLoading] = useState(false);
+  const [activeChat, setActiveChat] = useState(null);
 
   // Formulaire produit
   const [showForm, setShowForm] = useState(false);
@@ -95,11 +104,35 @@ const ProfilePage = () => {
 
   const handleTabChange = (tab) => {
     setActiveTab(tab);
-    if (tab === 'history' && isOwnProfile && purchases.length === 0) {
-      loadPurchases();
+    if (tab === 'history' && isOwnProfile && purchases.length === 0) loadPurchases();
+    if (tab === 'favorites' && isOwnProfile) loadFavorites();
+    if (tab === 'messages' && isOwnProfile) {
+      setNegoLoading(true);
+      negociationService.getUserNegociations()
+        .then(res => setNegociations(res.data.data?.negociations || []))
+        .catch(() => setNegociations([]))
+        .finally(() => setNegoLoading(false));
     }
-    if (tab === 'favorites' && isOwnProfile) {
-      loadFavorites();
+  };
+
+  const handleEditInfo = () => {
+    setInfoForm({ telephone: user.telephone || '', ville: user.ville || '', bio: user.bio || '' });
+    setInfoMsg('');
+    setEditingInfo(true);
+  };
+
+  const handleSaveInfo = async () => {
+    setInfoSaving(true);
+    setInfoMsg('');
+    try {
+      await userService.updateProfile(userId, infoForm);
+      setUser(prev => ({ ...prev, ...infoForm }));
+      setInfoMsg('Profil mis à jour !');
+      setEditingInfo(false);
+    } catch (e) {
+      setInfoMsg(e.response?.data?.message || 'Erreur');
+    } finally {
+      setInfoSaving(false);
     }
   };
 
@@ -313,6 +346,11 @@ const ProfilePage = () => {
             Historique
           </button>
         )}
+        {isOwnProfile && (
+          <button className={`tab-btn ${activeTab === 'messages' ? 'active' : ''}`} onClick={() => handleTabChange('messages')}>
+            <FaComments style={{marginRight:'0.3rem',fontSize:'0.8rem'}}/>Messages
+          </button>
+        )}
       </div>
 
       {/* CONTENU */}
@@ -332,23 +370,54 @@ const ProfilePage = () => {
                 <label>Rôle</label>
                 <p style={{ textTransform: 'capitalize' }}>{user.role}</p>
               </div>
-              <div className="info-item">
-                <label>Téléphone</label>
-                <p>{user.telephone || '—'}</p>
-              </div>
-              <div className="info-item">
-                <label>Ville</label>
-                <p>{user.ville || '—'}</p>
-              </div>
-              <div className="info-item">
-                <label>Pays</label>
-                <p>{user.pays || 'France'}</p>
-              </div>
-              {user.bio && (
-                <div className="info-item info-item-full">
-                  <label>Bio</label>
-                  <p>{user.bio}</p>
-                </div>
+              {editingInfo && isOwnProfile ? (
+                <>
+                  <div className="info-item">
+                    <label>Téléphone</label>
+                    <input className="info-edit-input" type="tel" value={infoForm.telephone}
+                      onChange={e => setInfoForm(p => ({ ...p, telephone: e.target.value }))} placeholder="Ex: 06 12 34 56 78" />
+                  </div>
+                  <div className="info-item">
+                    <label>Ville</label>
+                    <input className="info-edit-input" type="text" value={infoForm.ville}
+                      onChange={e => setInfoForm(p => ({ ...p, ville: e.target.value }))} placeholder="Ex: Paris" />
+                  </div>
+                  <div className="info-item info-item-full">
+                    <label>Bio</label>
+                    <textarea className="info-edit-input" rows={3} value={infoForm.bio}
+                      onChange={e => setInfoForm(p => ({ ...p, bio: e.target.value }))} placeholder="Quelques mots sur vous..." />
+                  </div>
+                  <div className="info-item info-item-full info-edit-actions">
+                    <button className="btn-save-info" onClick={handleSaveInfo} disabled={infoSaving}>
+                      {infoSaving ? 'Sauvegarde...' : 'Sauvegarder'}
+                    </button>
+                    <button className="btn-cancel-info" onClick={() => setEditingInfo(false)}>Annuler</button>
+                    {infoMsg && <span className="info-msg">{infoMsg}</span>}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="info-item">
+                    <label>Téléphone</label>
+                    <p>{user.telephone || '—'}</p>
+                  </div>
+                  <div className="info-item">
+                    <label>Ville</label>
+                    <p>{user.ville || '—'}</p>
+                  </div>
+                  {user.bio && (
+                    <div className="info-item info-item-full">
+                      <label>Bio</label>
+                      <p>{user.bio}</p>
+                    </div>
+                  )}
+                  {isOwnProfile && (
+                    <div className="info-item info-item-full">
+                      <button className="btn-edit-info" onClick={handleEditInfo}>Modifier mes informations</button>
+                      {infoMsg && <span className="info-msg success">{infoMsg}</span>}
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </div>
@@ -659,7 +728,56 @@ const ProfilePage = () => {
             )}
           </div>
         )}
+        {/* ONGLET MESSAGES */}
+        {activeTab === 'messages' && isOwnProfile && (
+          <div className="tab-content messages-tab">
+            {negoLoading ? (
+              <p className="empty-message">Chargement...</p>
+            ) : negociations.length === 0 ? (
+              <div className="empty-products">
+                <p>Aucune conversation pour le moment.</p>
+                <p>Contactez un vendeur depuis une annonce pour démarrer.</p>
+              </div>
+            ) : (
+              <div className="nego-list">
+                {negociations.map(neg => {
+                  const other = neg.acheteur_id === authUser?.id
+                    ? { nom: neg.vendeur_nom, prenom: neg.vendeur_prenom }
+                    : { nom: neg.acheteur_nom, prenom: neg.acheteur_prenom };
+                  return (
+                    <div key={neg.id} className="nego-item" onClick={() => setActiveChat(neg)}>
+                      <div className="nego-img">
+                        {neg.image_principale
+                          ? <img src={`http://localhost:8000${neg.image_principale}`} alt="" />
+                          : <span>📦</span>}
+                      </div>
+                      <div className="nego-info">
+                        <p className="nego-product">{neg.produit_titre}</p>
+                        <p className="nego-other">{other.prenom} {other.nom}</p>
+                        {neg.prix_actuellement_propose > 0 && (
+                          <p className="nego-price">Dernière offre : {Number(neg.prix_actuellement_propose).toFixed(2)} €</p>
+                        )}
+                      </div>
+                      <div className="nego-meta">
+                        <span className={`nego-statut nego-statut-${neg.statut}`}>{neg.statut}</span>
+                        <FaComments className="nego-icon" />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
+
       </div>
+
+      {activeChat && (
+        <ChatModal
+          product={{ id: activeChat.produit_id, titre: activeChat.produit_titre, type_vente: activeChat.type_vente }}
+          onClose={() => setActiveChat(null)}
+        />
+      )}
     </div>
   );
 };
