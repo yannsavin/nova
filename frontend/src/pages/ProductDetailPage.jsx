@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { FaHeart, FaStar, FaChevronLeft, FaChevronRight, FaBolt, FaShoppingCart } from 'react-icons/fa';
+import { FaHeart, FaStar, FaChevronLeft, FaChevronRight, FaBolt, FaShoppingCart, FaComments } from 'react-icons/fa';
 import { AuthContext } from '../context/AuthContext';
 import { FavoritesContext } from '../context/FavoritesContext';
 import { CartContext } from '../context/CartContext';
 import productService from '../services/productService';
 import auctionService from '../services/auctionService';
+import ChatModal from '../components/ChatModal';
 import '../styles/ProductDetailPage.css';
 
 const ProductDetailPage = () => {
@@ -21,6 +22,7 @@ const ProductDetailPage = () => {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [auction, setAuction] = useState(null);
   const [auctionHistory, setAuctionHistory] = useState([]);
+  const [showChat, setShowChat] = useState(false);
   const [bidAmount, setBidAmount] = useState('');
   const [bidLoading, setBidLoading] = useState(false);
   const [bidMessage, setBidMessage] = useState('');
@@ -86,8 +88,10 @@ const ProductDetailPage = () => {
     : product.image_principale ? [toAbsolute(product.image_principale)] : ['/placeholder.jpg'];
 
   const fav = isFavorite(product.id);
-  const isOwner = isAuthenticated && user?.id === product.vendeur_id;
-  const canBuy  = isAuthenticated && !isOwner && product.type_vente === 'achat_immediat' && product.etat === 'active';
+  const isOwner   = isAuthenticated && user?.id === product.vendeur_id;
+  const isVendeur = user?.role === 'vendeur';
+  const canAct    = isAuthenticated && !isOwner && !isVendeur && product.etat === 'active';
+  const canBuy    = canAct && product.type_vente === 'achat_immediat';
   const canAddToCart = canBuy && user?.role === 'acheteur';
 
   const handleAddToCart = () => {
@@ -277,8 +281,13 @@ const ProductDetailPage = () => {
             )}
             {cartMsg && <p className="cart-feedback">{cartMsg}</p>}
 
-            {isAuthenticated && !isOwner && product.etat === 'active' && product.type_vente !== 'achat_immediat' && (
-              <button className="btn-contact">Contacter le vendeur</button>
+            {canAct && (
+              <button className="btn-contact" onClick={() => setShowChat(true)}>
+                <FaComments /> Contacter le vendeur
+              </button>
+            )}
+            {isVendeur && !isOwner && product.etat === 'active' && (
+              <p style={{color:'#e67e22',fontSize:'0.88rem',margin:'8px 0'}}>Les vendeurs ne peuvent pas acheter ni contacter.</p>
             )}
 
             {!isAuthenticated && (
@@ -316,6 +325,10 @@ const ProductDetailPage = () => {
         <h2>Description</h2>
         <p>{product.description || 'Aucune description disponible.'}</p>
       </div>
+
+      {showChat && (
+        <ChatModal product={product} onClose={() => setShowChat(false)} />
+      )}
     </div>
   );
 };
