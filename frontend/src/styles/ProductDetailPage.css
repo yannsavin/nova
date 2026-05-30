@@ -481,6 +481,22 @@
 }
 .btn-buy-now:hover { opacity: 0.9; transform: translateY(-1px); }
 
+.btn-add-to-cart {
+  display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+  width: 100%; padding: 0.9rem;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white; border: none; border-radius: 10px;
+  font-size: 1.05rem; font-weight: 700; cursor: pointer;
+  box-shadow: 0 4px 14px rgba(102,126,234,0.3);
+  transition: opacity 0.2s, transform 0.1s;
+}
+.btn-add-to-cart:hover { opacity: 0.9; transform: translateY(-1px); }
+
+.cart-feedback {
+  text-align: center; color: #27ae60;
+  font-weight: 600; font-size: 0.95rem; margin: 0.3rem 0 0;
+}
+
 .btn-contact {
   width: 100%; padding: 0.8rem;
   background: white; border: 2px solid #667eea; color: #667eea;
